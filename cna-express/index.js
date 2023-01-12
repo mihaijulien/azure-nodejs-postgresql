@@ -30,3 +30,24 @@ const Inventory = sequelize.define('inventory', {
 app.use(express.json());
 
 app.listen(port, () => console.log(`Sample app is listening on port ${port}!`));
+
+app.post('/inventory', async (req, res) => {
+    try {
+       const newItem = new Inventory(req.body)
+       await newItem.save()
+       res.json({ inventory: newItem })
+    } catch(error) {
+       console.error(error)
+    }})
+    app.get('/inventory/:id', async (req, res) => {
+       const id = req.params.id
+       try {
+      const inventory = await Inventory.findAll({
+          attributes: ['id', 'name', 'quantity', 'date'],
+          where: {
+             id: id
+          }})
+          res.json({ inventory })
+       } catch(error) {
+           console.error(error)
+    }})
