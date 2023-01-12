@@ -1,0 +1,45 @@
+* Create a resource group that will host the azure web app
+RG1NAME=postgresql-db-RG
+LOCATION=$(az group show --resource-group $RG1NAME --query location --output tsv)
+RG2NAME=cna-express-RG
+az group create --name $RG2NAME --location $LOCATION
+
+* Create a Free-Tier Azure App Service plan that will host the new Azure web app
+SPNAME=express-sp
+az appservice plan create --name $SPNAME --resource-group $RG2NAME --sku F1 --is-linux
+
+WEBAPPNAME=express$RANDOM$RANDOM
+az webapp create --name $WEBAPPNAME --resource-group $RG2NAME --plan $SPNAME --runtime "NODE|12-lts"
+
+* Create the new Node.js-based Azure web app and deploy the code into it
+cd ~/cna-express
+git config --global user.email "mihaijulien@gmail.com"
+git config --global user.name "Julien Mihai"
+git init
+git add -A
+git commit -m "Initial Commit"
+
+DEPLOYMENTUSER=m03User$RANDOM
+DEPLOYMENTPASS=m03Pass$RANDOM$RANDOM
+az webapp deployment user set --user-name $DEPLOYMENTUSER --password $DEPLOYMENTPASS
+
+echo $DEPLOYMENTUSER
+echo $DEPLOYMENTPASS
+
+RG2NAME=cna-express-RG
+WEBAPPNAME=$(az webapp list --resource-group $RG2NAME --query "[0].name" --output tsv)
+DEPLOYMENTURL=$(az webapp deployment source config-local-git --name $WEBAPPNAME --resource-group $RG2NAME --output tsv)
+
+git remote add azure $DEPLOYMENTURL
+
+git checkout -b master
+git commit -a -m "test"
+git push --set-upstream azure master
+
+* Validate the POST HTTP routing of the Node.js Express app
+RG2NAME=cna-express-RG
+WEBAPPNAME=$(az webapp list --resource-group $RG2NAME --query "[0].name" --output tsv)
+curl --header "Content-Type: application/json" \
+--request POST \
+--data '{"id":3,"name":"ice cream","quantity":50}' \
+http://$WEBAPPNAME.azurewebsites.net/inventory
